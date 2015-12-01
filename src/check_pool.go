@@ -24,8 +24,8 @@ func newWorkerMapping(mapList string) WorkerMapping {
 
 // checkPools is used to check the status of all pools from a list
 func checkPools(flags flagType, pools []BalancerPool) (string, int) {
-	var wAddr, msg string
-	var fails, suspect, good, problemBears []string
+	var wAddr, msg, perfdata string
+	var fails, suspect, good, problemBears, perfdatas []string
 	var p *BalancerPool
 	var workerStat bool
 
@@ -99,6 +99,10 @@ func checkPools(flags flagType, pools []BalancerPool) (string, int) {
 		// now evaluate the balancer conditions:
 		disfunctRatio := int(float64(100) * (float64(1) - float64(p.WorkersOK)/float64(p.WorkersCount)))
 
+		// perf dat of this pool
+		perfdata = fmt.Sprintf("%s=%d%%", p.Name, disfunctRatio)
+		perfdatas = append(perfdatas, perfdata)
+
 		if p.StatusOK == false || disfunctRatio >= flags.Critical {
 			// Even one disordered pool or one pool with too few workers is critical
 			globalStatus = ErrCrit
@@ -138,6 +142,13 @@ func checkPools(flags flagType, pools []BalancerPool) (string, int) {
 			msg += fmt.Sprintf(". Bad workers: (%s)", strings.Join(problemBears, ", "))
 		}
 	}
+
+	// now evaluate the balancer global
+	disfunctRatio := int(float64(100) * (float64(len(suspect)) / float64(len(pools))))
+	// perf dat of this balancer global
+	perfdata = fmt.Sprintf("|global=%d%%;%d;%d;0;100 ", disfunctRatio, flags.Warning, flags.Critical)
+	msg += perfdata
+	msg += strings.Join(perfdatas, " ")
 
 	return msg, globalStatus
 }
